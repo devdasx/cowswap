@@ -159,7 +159,7 @@ describe('fetchAndProcessQuote', () => {
         mockTradeQuoteManager,
       )
 
-      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(true, sameChainQuoteParams)
+      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(mockFetchParams, sameChainQuoteParams)
       expect(mockBridgingSdk.getQuote).toHaveBeenCalledWith(sameChainQuoteParams, {
         allowIntermediateEqSellToken: true,
         quoteRequest: {
@@ -200,7 +200,7 @@ describe('fetchAndProcessQuote', () => {
         mockTradeQuoteManager,
       )
 
-      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(true, crossChainQuoteParams)
+      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(mockFetchParams, crossChainQuoteParams)
       expect(mockGetBridgeQuoteSigner).toHaveBeenCalledWith(SupportedChainId.MAINNET)
       expect(mockBridgingSdk.getBestQuote).toHaveBeenCalledWith({
         quoteBridgeRequest: crossChainQuoteParams,
@@ -811,7 +811,7 @@ describe('fetchAndProcessQuote', () => {
         mockTradeQuoteManager,
       )
 
-      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(false, mockQuoteParams)
+      expect(mockTradeQuoteManager.setLoading).toHaveBeenCalledWith(noParamsChangedFetchParams, mockQuoteParams)
     })
   })
 })

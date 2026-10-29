@@ -1,7 +1,7 @@
 import { atom } from 'jotai'
 
 import { getCurrencyAddress } from '@cowprotocol/common-utils'
-import { getAddressKey, QuoteAndPost } from '@cowprotocol/cow-sdk'
+import { getAddressKey, PriceQuality, QuoteAndPost } from '@cowprotocol/cow-sdk'
 import { BridgeProviderQuoteError, BridgeQuoteResults, QuoteBridgeRequest } from '@cowprotocol/sdk-bridging'
 
 import { isProviderNetworkDeprecatedAtom } from 'entities/common/isProviderNetworkDeprecated.atom'
@@ -14,6 +14,11 @@ import { QuoteApiError } from 'api/cowProtocol/errors/QuoteError'
 import { TradeQuoteFetchParams } from '../types'
 import { getIsFastQuote } from '../utils/getIsFastQuote'
 
+export interface PendingQuotes {
+  fetchStartTimestamp: number
+  priceQualities: PriceQuality[]
+}
+
 export interface TradeQuoteState {
   quote: QuoteAndPost | null
   isBridgeQuote: boolean | null
@@ -24,6 +29,8 @@ export interface TradeQuoteState {
   hasParamsChanged: boolean
   isLoading: boolean
   localQuoteTimestamp: number | null
+  /** Quotes of the latest fetch round that have neither arrived nor failed; null once all of them have. */
+  pendingQuotes: PendingQuotes | null
 }
 
 type SellTokenAddress = string
@@ -37,6 +44,7 @@ export const DEFAULT_TRADE_QUOTE_STATE: TradeQuoteState = {
   hasParamsChanged: false,
   isLoading: false,
   localQuoteTimestamp: null,
+  pendingQuotes: null,
 }
 
 export const tradeQuotesAtom = atom<Record<SellTokenAddress, TradeQuoteState | undefined>>({})
@@ -69,6 +77,32 @@ export const updateTradeQuoteAtom = atom(
         ...prevState,
         [sellTokenAddress]: update,
       }
+    })
+  },
+)
+
+export const updatePendingQuotesAtom = atom(
+  null,
+  (get, set, _sellTokenAddress: SellTokenAddress, fetchParams: TradeQuoteFetchParams, isSettled: boolean) => {
+    const sellTokenAddress = getAddressKey(_sellTokenAddress)
+    const prevState = get(tradeQuotesAtom)
+    const prevQuote = prevState[sellTokenAddress] || DEFAULT_TRADE_QUOTE_STATE
+    const { fetchStartTimestamp, priceQuality } = fetchParams
+    const current = prevQuote.pendingQuotes
+    const isCurrentRound = current?.fetchStartTimestamp === fetchStartTimestamp
+
+    if (isSettled && !isCurrentRound) return
+
+    const priceQualities = isSettled
+      ? (current?.priceQualities ?? []).filter((quality) => quality !== priceQuality)
+      : [...(isCurrentRound ? current.priceQualities : []), priceQuality]
+
+    set(tradeQuotesAtom, {
+      ...prevState,
+      [sellTokenAddress]: {
+        ...prevQuote,
+        pendingQuotes: priceQualities.length ? { fetchStartTimestamp, priceQualities } : null,
+      },
     })
   },
 )
